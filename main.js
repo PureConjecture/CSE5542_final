@@ -1,3 +1,11 @@
+//Variables
+var gl;
+var program;
+var vrDisplay;
+var frameData;
+var vrSceneFrame;
+var inVR = false;
+
 function send_to_gpu(array)
 {
 	var buffer = gl.createBuffer();
@@ -13,13 +21,51 @@ function send_and_bind(array, var_name)
 	gl.enableVertexAttribArray(vPosition_location);
 }
 
+function toggle_vr_display()
+{
+	console.log("Toggling VR.");
+	if (!inVR) {
+		vrDisplay.requestPresent([{source: canvas}]).then(function() {
+		
+			var leftEye = vrDisplay.getEyeParameters('left');
+			var rightEye = vrDisplay.getEyeParameters('right');
+
+			canvas.width = Math.max(leftEye.renderWidth, rightEye.renderWidth);
+			canvas.height = Math.max(leftEye.renderHeight, rightEye.renderHeight);
+
+			//Draw vr scene
+		});
+	}
+
+	inVR = !inVR;
+}
+
+function drawVRScene()
+{
+	//Request the next frame of animation
+	vrSceneFrame = vrDisplay.requestAnimationFrame(drawVRScene);
+
+	//Get frame data
+	vrDisplay.getFrameData(frameData);
+
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+	//Obtain references to the shader variables for the matricies
+	var projectionMatrixLocation = gl.getUniformLocation(program, "proj_matrix");
+	var viewMatrixLocation = gl.getUniformLocation(program, "view_matrix");
+
+
+
+	vrDisplay.submitFrame();
+}
+
 //Get a reference to the canvas and max out its size
 var canvas = document.getElementById("gl-canvas");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 //Create and initialize the WebGL context
-var gl = WebGLUtils.setupWebGL(canvas);
+gl = WebGLUtils.setupWebGL(canvas);
 if (!gl) {
 	alert("WebGL is not supported by your system.");
 }
@@ -30,7 +76,7 @@ gl.depthFunc(gl.LEQUAL);
 gl.clear(gl.COLOR_BUFFER_BIT);
 
 //Compile the shaders
-var program = initShaders(gl, "vertex-shader", "fragment-shader");
+program = initShaders(gl, "vertex-shader", "fragment-shader");
 gl.useProgram(program);
 
 //Array of cube vertices
@@ -93,11 +139,15 @@ if (!navigator.getVRDisplays) {
 }
 
 //Get the displays attached to the computer
-var vrDisplay;
+var button = document.getElementById("vr-toggle");
 navigator.getVRDisplays().then(function(displays) {
 		if (displays.length > 0) {
 			vrDisplay = displays[0];
 			console.log("Display found.");
+
+			button.onclick = toggle_vr_display;
+		} else {
+			alert("VR display not found.");
 		}
 	}
 );

@@ -7,12 +7,13 @@
 		attribute vec4 vColor;
 		varying vec4 fColor;
 
-		uniform mat4 model_view_matrix;
+		uniform mat4 proj_matrix;
+		uniform mat4 view_matrix;
 
 		void main()
 		{
 			fColor = vColor;
-			gl_Position = model_view_matrix * vPosition;
+			gl_Position = vPosition;
 		}
 	</script>
 
@@ -30,6 +31,7 @@
 		<title>VR final project</title>
 	</head>
 	<body>
+		<button id="vr-toggle">Toggle VR Display</button>
 		<canvas id="gl-canvas" width="800" height="800"></canvas>
 	</body>
 
