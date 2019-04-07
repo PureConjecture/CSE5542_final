@@ -17,6 +17,7 @@
     <script src="three.js"></script>
     <script src="stats.js"></script>
     <script src="detector.js"></script>
+    <script src="WebVR.js"></script>
     <script>
 
         var camera, scene, renderer,
@@ -221,8 +222,8 @@
             scene = new THREE.Scene();
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-            camera.position.z = 1500;
-            camera.position.y = 400;
+            camera.position.z = 0;
+            camera.position.y = 0;
             scene.add(camera);
 
             var directionalLight = new THREE.DirectionalLight(0xffffff);
@@ -242,6 +243,8 @@
                         //parseStl(xhr.responseText);
                         mesh.rotation.x = 5;
                         mesh.rotation.z = .25;
+                        mesh.position.z = -1500;
+                        mesh.position.y = -400;
                         console.log('done parsing');
                     }
                 }
@@ -266,12 +269,23 @@
             stats.domElement.style.position = 'absolute';
             stats.domElement.style.top = '0px';
             document.body.appendChild(stats.domElement);
+
+            document.body.appendChild(WEBVR.createButton(renderer));
+            renderer.vr.enabled = true;
+
+            renderer.setAnimationLoop(function () {
+
+                renderer.render(scene, camera);
+
+            });
+
         }
 
         function animate() {
 
             // note: three.js includes requestAnimationFrame shim
             requestAnimationFrame(animate);
+
             render();
             stats.update();
 
@@ -285,7 +299,7 @@
             }
             //light1.position.z -= 1;
 
-            renderer.render(scene, camera);
+            //renderer.render(scene, camera);
 
         }
 
