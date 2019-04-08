@@ -17,6 +17,8 @@
     <script src="three.js"></script>
     <script src="stats.js"></script>
     <script src="detector.js"></script>
+    <script src="ViveController.js"></script>
+    <script src="OBJLoader.js"></script>
     <script src="WebVR.js"></script>
     <script>
 
@@ -273,10 +275,34 @@
             document.body.appendChild(WEBVR.createButton(renderer));
             renderer.vr.enabled = true;
 
-            renderer.setAnimationLoop(function () {
+            renderer.setAnimationLoop(render);
 
-                renderer.render(scene, camera);
+            // controllers
+            controller1 = new THREE.ViveController(0);
+            controller1.standingMatrix = renderer.vr.getStandingMatrix();
+            controller1.userData.id = 0;
+            scene.add(controller1);
 
+            controller2 = new THREE.ViveController(1);
+            controller2.standingMatrix = renderer.vr.getStandingMatrix();
+            controller2.userData.id = 1;
+            scene.add(controller2);
+
+            var loader = new THREE.OBJLoader();
+            loader.setPath('vive-controller/');
+            loader.load('vr_controller_vive_1_5.obj', function (object) {
+
+                var loader = new THREE.TextureLoader();
+                loader.setPath('vive-controller/');
+
+                var controller = object.children[0];
+                controller.material.map = loader.load('onepointfive_texture.png');
+                controller.material.specularMap = loader.load('onepointfive_spec.png');
+                controller.castShadow = true;
+                controller.receiveShadow = true;
+
+                controller1.add(controller.clone());
+                controller2.add(controller.clone());
             });
 
         }
@@ -284,14 +310,17 @@
         function animate() {
 
             // note: three.js includes requestAnimationFrame shim
-            requestAnimationFrame(animate);
-
-            render();
-            stats.update();
+            //requestAnimationFrame(animate);
+            
+            //render();
+            
 
         }
 
         function render() {
+
+            handleController(controller1);
+            handleController(controller2);
 
             //mesh.rotation.x += 0.01;
             if (mesh) {
@@ -299,7 +328,12 @@
             }
             //light1.position.z -= 1;
 
-            //renderer.render(scene, camera);
+            renderer.render(scene, camera);
+            stats.update();
+        }
+
+        function handleController(controller) {
+            controller.update();
 
         }
 
