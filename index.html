@@ -13,7 +13,7 @@
 		void main()
 		{
 			fColor = vColor;
-			gl_Position = vPosition;
+			gl_Position = proj_matrix * view_matrix * vPosition;
 		}
 	</script>
 
