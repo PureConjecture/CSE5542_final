@@ -10,7 +10,15 @@
 <body>
     <a-scene background="color: #ECECEC">
         <a-asset-item id="fish" src="model.gltf"></a-asset-item>
-        <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow></a-box>
-        <a-entity gltf-model="#fish" position="-500 1.25 -500 color="#4CC3D9"></a-entity>
+        <a-entity gltf-model="#fish" position="-7.5 4 -2" rotation="0 180 180" scale=".01 .01 .01"></a-entity>
+        <a-entity id='cameraWrapper' position="0 0 0">
+            <a-camera></a-camera>
+        </a-entity>
 </body>
+<script>
+    init();
+    function init() {
+        //document.querySelector("#cameraWrapper").object3D.position.set(1, 1, 100);
+    }
+</script>
 </html>
