@@ -1,42 +1,50 @@
-<meta charset="utf-8" />
+﻿<meta charset="utf-8" />
 <!doctype html>
 <html>
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 vPosition;
+        attribute vec4 vColor;
+        varying vec4 fColor;
 
-	<script id="vertex-shader" type="x-shader/x-vertex">
-		attribute vec4 vPosition;
-		attribute vec4 vColor;
-		varying vec4 fColor;
+        uniform mat4 proj_matrix;
+        uniform mat4 view_matrix;
 
-		uniform mat4 proj_matrix;
-		uniform mat4 view_matrix;
+        void main()
+        {
+        fColor = vColor;
+        gl_Position = proj_matrix * view_matrix * vPosition;
+        }
+    </script>
 
-		void main()
-		{
-			fColor = vColor;
-			gl_Position = proj_matrix * view_matrix * vPosition;
-		}
-	</script>
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+        varying vec4 fColor;
 
-	<script id="fragment-shader" type="x-shader/x-fragment">
-		precision mediump float;
-		varying vec4 fColor;
+        void main()
+        {
+        gl_FragColor = fColor;
+        }
+    </script>
 
-		void main()
-		{
-			gl_FragColor = fColor;
-		}
-	</script>
+    <head>
+        <title>VR final project</title>
+        <script src="https://aframe.io/releases/0.9.0/aframe.min.js"></script>
+    </head>
+    <body>
+        <a-scene background="color: #ECECEC">
+            <a-sky src="https://i.imgur.com/ca6V3SW.jpg" rotation="0 70 0" material="" geometry="" scale=""></a-sky>
+            <a-asset-item id="fish" src="model.gltf"></a-asset-item>
+            <a-entity gltf-model="#fish" position="-7.5 4 -2" rotation="0 180 180" scale=".01 .01 .01"></a-entity>
+            <a-entity id='cameraWrapper' position="0 0 0">
+                <a-camera></a-camera>
+            </a-entity>
+        </a-scene>
+        <button id="vr-toggle">Toggle VR Display</button>
+        <canvas id="gl-canvas" width="800" height="800"></canvas>
+    </body>
 
-	<head>
-		<title>VR final project</title>
-	</head>
-	<body>
-		<button id="vr-toggle">Toggle VR Display</button>
-		<canvas id="gl-canvas" width="800" height="800"></canvas>
-	</body>
-
-	<script type="text/javascript" src="webgl-utils.js"></script>
-	<script type="text/javascript" src="initShaders.js"></script>
-	<script type="text/javascript" src="MV.js"></script>
-	<script type="text/javascript" src="main.js"></script>
+    <script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript" src="initShaders.js"></script>
+    <script type="text/javascript" src="MV.js"></script>
+    <script type="text/javascript" src="main.js"></script>
 </html>
