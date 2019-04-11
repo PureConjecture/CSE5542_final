@@ -2,9 +2,13 @@
 var gl;
 var program;
 var vrDisplay;
-var frameData;
+var frameData = new VRFrameData();
 var vrSceneFrame;
 var inVR = false;
+var perspectiveMatrix = perspective(45, 640.0/480.0, 0.1, 100.0);
+var vertices;
+var vertex_colors;
+var indices;
 
 function send_to_gpu(array)
 {
@@ -30,10 +34,11 @@ function toggle_vr_display()
 			var leftEye = vrDisplay.getEyeParameters('left');
 			var rightEye = vrDisplay.getEyeParameters('right');
 
-			canvas.width = Math.max(leftEye.renderWidth, rightEye.renderWidth);
+			canvas.width = Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2;
 			canvas.height = Math.max(leftEye.renderHeight, rightEye.renderHeight);
 
 			//Draw vr scene
+			drawVRScene();
 		});
 	}
 
@@ -48,14 +53,45 @@ function drawVRScene()
 	//Get frame data
 	vrDisplay.getFrameData(frameData);
 
+	var curFramePose = frameData.pose;
+	var curPos = curFramePose.position;
+	var curOrient = curFramePose.orientation;
+
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 	//Obtain references to the shader variables for the matricies
-	var projectionMatrixLocation = gl.getUniformLocation(program, "proj_matrix");
 	var viewMatrixLocation = gl.getUniformLocation(program, "view_matrix");
+	var projectionMatrixLocation = gl.getUniformLocation(program, "proj_matrix");
 
+	//Render the left eye's view
+	gl.viewport(0, 0, canvas.width * 0.5, canvas.height);
 
+	//Get the left eye's view and projection matrices
+	var leftViewMat = frameData.leftViewMatrix;
+	var leftProjMat = frameData.leftProjectionMatrix;
 
+	//Send these matrices to the GPU
+	gl.uniformMatrix4fv(viewMatrixLocation, false, leftViewMat);
+	gl.uniformMatrix4fv(projectionMatrixLocation, false, leftProjMat);
+
+	//Draw the geometry	
+	gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0);
+
+	//Render the right eye's view
+	gl.viewport(canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height);
+
+	//Get the right eye's view and projection matrices
+	var rightViewMat = frameData.rightViewMatrix;
+	var rightProjMat = frameData.rightProjectionMatrix;
+
+	//Send these to the GPU
+	gl.uniformMatrix4fv(viewMatrixLocation, false, rightViewMat);
+	gl.uniformMatrix4fv(projectionMatrixLocation, false, rightProjMat);
+
+	//Draw the geometry
+	gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0);
+
+	//Send the frame to the HMD
 	vrDisplay.submitFrame();
 }
 
@@ -80,7 +116,7 @@ program = initShaders(gl, "vertex-shader", "fragment-shader");
 gl.useProgram(program);
 
 //Array of cube vertices
-var vertices = [
+vertices = [
 	vec3(-0.5, -0.5, 0.5),
 	vec3(-0.5, 0.5, 0.5),
 	vec3(0.5, 0.5, 0.5),
@@ -91,7 +127,7 @@ var vertices = [
 	vec3(0.5, -0.5, -0.5)
 ];
 
-var vertex_colors = [
+vertex_colors = [
 	vec4(0.0, 0.0, 0.0, 1.0),
 	vec4(1.0, 0.0, 0.0, 1.0),
 	vec4(1.0, 1.0, 0.0, 1.0),
@@ -108,7 +144,7 @@ if (vertices.length != vertex_colors.length)
 }
 
 //Define the indices of each triangle
-var indices = [
+indices = [
 	1, 0, 3,
 	3, 2, 1,
 	2, 3, 7,
