@@ -19,7 +19,6 @@
     <script src="stats.js"></script>
     <script src="detector.js"></script>
     <script src="ViveController.js"></script>
-    <script src="GLTFLoader.js"></script>
 
 
 </head>
@@ -298,6 +297,47 @@
             directionalLight.position.normalize();
             scene.add(directionalLight);
 
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4) {
+                    if (xhr.status == 200 || xhr.status == 0) {
+                        var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
+                        console.log(rep);
+                        parseStlBinary(rep);
+                        //parseStl(xhr.responseText);
+                        mesh.rotation.x = 5;
+                        mesh.rotation.z = .25;
+                        mesh.position.z = -1500;
+                        mesh.position.y = -400;
+                        console.log('done parsing');
+                    }
+                }
+            }
+            xhr.onerror = function (e) {
+                console.log(e);
+            }
+
+            xhr.open("GET", 'bellator.stl', true);
+            xhr.responseType = "arraybuffer";
+            //xhr.setRequestHeader("Accept","text/plain");
+            //xhr.setRequestHeader("Content-Type","text/plain");
+            //xhr.setRequestHeader('charset', 'x-user-defined');
+            xhr.send(null);
+
+            /*
+            AFRAME.registerComponent('example-geometry', {
+                update: function () {
+                    var mesh = this.el.getOrCreateObject3D('mesh', THREE.Mesh);
+                    mesh.geometry = new THREE.Geometry();
+                }
+            });
+            */
+
+            //renderer = new THREE.WebGLRenderer(); //new THREE.CanvasRenderer();
+            //renderer.setSize(window.innerWidth, window.innerHeight);
+
+            //document.body.appendChild(renderer.domElement);
+
             stats = new Stats();
             stats.domElement.style.position = 'absolute';
             stats.domElement.style.top = '0px';
@@ -305,13 +345,6 @@
 
             document.body.appendChild(WEBVR.createButton(renderer));
             renderer.vr.enabled = true;
-
-
-            var loader = new THREE.GLTFLoader();
-            loader.load('model.gltf', mesh);
-
-            scene.add(mesh);
-
 
             /*
             // vive controllers
