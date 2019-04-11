@@ -12,17 +12,21 @@
             overflow: hidden;
         }
     </style>
-</head>
-<body>
     <script src="three.js"></script>
     <script src="stats.js"></script>
     <script src="detector.js"></script>
     <script src="ViveController.js"></script>
     <script src="OBJLoader.js"></script>
+    <script src="WebGL.js"></script>
     <script src="WebVR.js"></script>
+</head>
+<body>
+    
     <script>
 
-        var camera, scene, renderer,
+        
+
+        var camera, controls, scene, renderer,
             geometry, material, mesh, light1, stats;
 
         function trim(str) {
@@ -212,7 +216,11 @@
             }
         };
 
+        if (WEBGL.isWebGLAvailable() === false) {
 
+            document.body.appendChild(WEBGL.getWebGLErrorMessage());
+
+        }
 
         init();
         animate();
@@ -224,7 +232,7 @@
             scene = new THREE.Scene();
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-            camera.position.z = 0;
+            camera.position.z = 500;
             camera.position.y = 0;
             scene.add(camera);
 
@@ -262,6 +270,15 @@
             //xhr.setRequestHeader('charset', 'x-user-defined');
             xhr.send(null);
 
+            /*
+            AFRAME.registerComponent('example-geometry', {
+                update: function () {
+                    var mesh = this.el.getOrCreateObject3D('mesh', THREE.Mesh);
+                    mesh.geometry = new THREE.Geometry();
+                }
+            });
+            */
+
             renderer = new THREE.WebGLRenderer(); //new THREE.CanvasRenderer();
             renderer.setSize(window.innerWidth, window.innerHeight);
 
@@ -275,9 +292,7 @@
             document.body.appendChild(WEBVR.createButton(renderer));
             renderer.vr.enabled = true;
 
-            renderer.setAnimationLoop(render);
-
-            // controllers
+            // vive controllers
             controller1 = new THREE.ViveController(0);
             controller1.standingMatrix = renderer.vr.getStandingMatrix();
             controller1.userData.id = 0;
@@ -305,28 +320,25 @@
                 controller2.add(controller.clone());
             });
 
+            renderer.setAnimationLoop(render);
         }
 
         function animate() {
-
-            // note: three.js includes requestAnimationFrame shim
-            //requestAnimationFrame(animate);
-            
-            //render();
-            
 
         }
 
         function render() {
 
-            handleController(controller1);
-            handleController(controller2);
+            //handleController(controller1);
+            //handleController(controller2);
 
             //mesh.rotation.x += 0.01;
             if (mesh) {
                 mesh.rotation.z += 0.02;
             }
             //light1.position.z -= 1;
+
+            //controls.update();
 
             renderer.render(scene, camera);
             stats.update();
