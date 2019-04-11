@@ -12,13 +12,15 @@
             overflow: hidden;
         }
     </style>
+    <script src="WebGL.js"></script>
+    <script src="WebVR.js"></script>
     <script src="three.js"></script>
+    <script src="OBJLoader.js"></script>
     <script src="stats.js"></script>
     <script src="detector.js"></script>
     <script src="ViveController.js"></script>
-    <script src="OBJLoader.js"></script>
-    <script src="WebGL.js"></script>
-    <script src="WebVR.js"></script>
+
+
 </head>
 <body>
     
@@ -26,7 +28,7 @@
 
         
 
-        var camera, controls, scene, renderer,
+        var camera, cameraCube, controls, scene, renderer,
             geometry, material, mesh, light1, stats;
 
         function trim(str) {
@@ -90,17 +92,23 @@
             // expensive operation, but only needs to be done once.
             geo.computeFaceNormals();
 
+            var loader = new THREE.TextureLoader();
+            var texture = loader.load("fossil.jpeg")
+            texture.flipY = false;
+
             mesh = new THREE.Mesh(
                 geo,
                 // new THREE.MeshNormalMaterial({
                 //     overdraw:true
                 // }
                 new THREE.MeshLambertMaterial({
-                    overdraw: true,
-                    color: 0xaa0000,
-                    shading: THREE.FlatShading
+                    map: texture
+                    //overdraw: true,
+                    //color: 0xaaaaaa,
+                    //shading: THREE.FlatShading
                 }
                 ));
+            
             scene.add(mesh);
 
             stl = null;
@@ -230,11 +238,57 @@
             //Detector.addGetWebGLMessage();
 
             scene = new THREE.Scene();
+            sceneCube = new THREE.Scene();
+
+            textureCube = new THREE.TextureLoader().load("background.png");
+            textureCube.format = THREE.PNGFormat;
+            textureCube.mapping = THREE.CubeReflectionMapping;
+            textureCube.encoding = THREE.sRGBEncoding;
+
+            var cubeShader = THREE.ShaderLib["cube"];
+            var cubeMaterial = new THREE.ShaderMaterial({
+                fragmentShader: cubeShader.fragmentShader,
+                vertexShader: cubeShader.vertexShader,
+                uniforms: cubeShader.uniforms,
+                depthWrite: false,
+                side: THREE.BackSide
+            });
+
+            cubeMaterial.uniforms["tCube"].value = textureCube;
+            Object.defineProperty(cubeMaterial, 'map', {
+
+                get: function () {
+
+                    return this.uniforms.tCube.value;
+
+                }
+
+            });
+
+            // Skybox
+
+            cubeMesh = new THREE.Mesh(new THREE.BoxBufferGeometry(100, 100, 100), cubeMaterial);
+            sceneCube.add(cubeMesh);
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.autoClear = false;
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            renderer.gammaOutput = true;
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
             camera.position.z = 500;
             camera.position.y = 0;
             scene.add(camera);
+
+            cameraCube = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 100000);
+
+            //controls = new THREE.OrbitControls(camera);
+            //controls.minDistance = 500;
+            //controls.maxDistance = 2500;
+
 
             var directionalLight = new THREE.DirectionalLight(0xffffff);
             directionalLight.position.x = 0;
@@ -279,10 +333,10 @@
             });
             */
 
-            renderer = new THREE.WebGLRenderer(); //new THREE.CanvasRenderer();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            //renderer = new THREE.WebGLRenderer(); //new THREE.CanvasRenderer();
+            //renderer.setSize(window.innerWidth, window.innerHeight);
 
-            document.body.appendChild(renderer.domElement);
+            //document.body.appendChild(renderer.domElement);
 
             stats = new Stats();
             stats.domElement.style.position = 'absolute';
@@ -292,6 +346,7 @@
             document.body.appendChild(WEBVR.createButton(renderer));
             renderer.vr.enabled = true;
 
+            /*
             // vive controllers
             controller1 = new THREE.ViveController(0);
             controller1.standingMatrix = renderer.vr.getStandingMatrix();
@@ -302,6 +357,7 @@
             controller2.standingMatrix = renderer.vr.getStandingMatrix();
             controller2.userData.id = 1;
             scene.add(controller2);
+            
 
             var loader = new THREE.OBJLoader();
             loader.setPath('vive-controller/');
@@ -319,12 +375,15 @@
                 controller1.add(controller.clone());
                 controller2.add(controller.clone());
             });
+            */
 
-            renderer.setAnimationLoop(render);
+            //renderer.setAnimationLoop(render);
         }
 
         function animate() {
+            requestAnimationFrame(animate);
 
+            render();
         }
 
         function render() {
@@ -333,13 +392,17 @@
             //handleController(controller2);
 
             //mesh.rotation.x += 0.01;
-            if (mesh) {
-                mesh.rotation.z += 0.02;
-            }
+            //if (mesh) {
+                //mesh.rotation.z += 0.02;
+            //}
             //light1.position.z -= 1;
 
             //controls.update();
+            //camera.lookAt(scene.position);
+            cameraCube.rotation.copy(camera.rotation);
 
+            renderer.render(sceneCube, cameraCube);
+            
             renderer.render(scene, camera);
             stats.update();
         }
