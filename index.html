@@ -28,27 +28,40 @@
 </script>
 
 <head>
-    <title>VR final project</title>
+    <title>three.js webgl - shaders - ocean</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+
+        body {
+            color: #000;
+            font-family: Monospace;
+            font-size: 42px;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            text-align: center;
+            padding: 5px;
+        }
+    </style>
 </head>
+
 <body>
-    <comment>
-    <button id="vr-toggle">Toggle VR Display</button>
-    <canvas id="gl-canvas" width="800" height="800"></canvas>
-        </comment>
+    <div id="container"></div>
+    <div id="info">
+        Bellator militaris
+    </div>
+
+    <script src="three.js"></script>
+    <script src="CubeTextureLoader.js"></script>
+    <script src="WebGL.js"></script>
+    <script src="WebVR.js"></script>
+    <script src="model.js"></script>
 </body>
-
-
-<script type="text/javascript" src="webgl-utils.js"></script>
-<script type="text/javascript" src="initShaders.js"></script>
-<script type="text/javascript" src="MV.js"></script>
-
-<script src="WebGL.js"></script>
-<script src="WebVR.js"></script>
-<script src="three.js"></script>
-<script src="stats.js"></script>
-
-<script src="model.js"></script>
-
-
 
 </html>
