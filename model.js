@@ -129,7 +129,6 @@ function init() {
     };
 
     r.open('GET', 'bitmap.json');
-    r.responseType = 'json';
     r.overrideMimeType("application/json");
 
     r.send();
