@@ -1,4 +1,4 @@
-var mesh, skyBox;
+var mesh, skyBox, bmtext;
 
 if (WEBGL.isWebGLAvailable() === false) {
 
@@ -6,24 +6,10 @@ if (WEBGL.isWebGLAvailable() === false) {
 
 }
 
-function getVRDisplay(onDisplay) {
-
-    if ('getVRDisplays' in navigator) {
-
-        navigator.getVRDisplays()
-            .then(function (displays) {
-                onDisplay(displays[0]);
-            });
-
-    }
-
-}
-
 var container;
 var camera, scene, renderer, light;
-var controls, water, sphere;
 
-
+var vrEffect, vrControls, orbitControls;
 
 function init() {
 
@@ -40,6 +26,51 @@ function init() {
 
     light = new THREE.DirectionalLight(0xffffff, 0.8);
     scene.add(light);
+
+    // VR setup
+
+    //document.body.appendChild(WEBVR.createButton(renderer));
+    //renderer.vr.enabled = true;
+
+    vrControls = new THREE.VRControls(camera);
+    vrEffect = new THREE.VREffect(renderer);
+
+    orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    if (navigator.getVRDisplays !== undefined) {
+        navigator.getVRDisplays()
+            .then(function (displays) {
+                vrEffect.setVRDisplay(displays[0]);
+                vrControls.setVRDisplay(displays[0]);
+                //renderer.setDevice(displays[0]);
+            });
+
+        window.addEventListener('vrdisplaypresentchange', function () {
+            if (!vrEffect.isPresenting) {
+                camera.position.set(0.13, 0, -0.26);
+                camera.quaternion.set(0, 0, 0, 1);
+                orbitControls.target.copy(mesh.position);
+            }
+        }, false);
+
+        window.addEventListener('vrdisplayactivate', function () {
+            vrControls.resetPose();
+        }, false);
+
+        document.body.appendChild(WEBVR.getButton(vrEffect));
+
+    } else {
+        document.body.appendChild(WEBVR.getMessage());
+    }
+
+
+    //orbitControls.maxPolarAngle = Math.PI * 0.495;
+    orbitControls.target.set(0, 10, 0);
+    orbitControls.minDistance = 0.0;
+    orbitControls.maxDistance = 100.0;
+    orbitControls.zoomSpeed = 4.0;
+    orbitControls.update();
+
 
     // Skybox
 
@@ -71,8 +102,9 @@ function init() {
                 var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
                 console.log(rep);
                 parseStlBinary(rep);
-                mesh.position.z = -2;
+                mesh.position.z = -3;
                 mesh.position.y = 0;
+                orbitControls.target.copy(mesh.position);
                 console.log('done parsing');
             }
         }
@@ -85,49 +117,83 @@ function init() {
     xhr.responseType = "arraybuffer";
     xhr.send(null)
 
+    //text
+    
+    var r = new XMLHttpRequest();
+    r.open('GET', 'bitmap.json');
+    r.overrideMimeType("application/json");
 
-    document.body.appendChild(WEBVR.createButton(renderer));
-    renderer.vr.enabled = true;
+    r.onreadystatechange = function () {
+        if (r.readyState === 4 && r.status === 200) {
+            setup(JSON.parse(r.responseText));
+        }
+    };
 
-    getVRDisplay(function (display) {
-        renderer.vr.setDevice(display);
+    r.send();
+
+    //window.addEventListener('resize', onWindowResize, false);
+}
+
+function setup(font) {
+    // pass font into TextBitmap object
+    bmtext = new TextBitmap({
+        imagePath: 'bitmap1.png',
+        text: 'The quick brown fox jumps over the lazy dog.',
+        width: 1000,
+        align: 'center',
+        font: font,
+        lineHeight: font.common.lineHeight - 20,
+        letterSpacing: 1,
+        scale: 1.0, //0.0004,
+        rotate: false,
+        color: "#ccc",
+        showHitBox: true // for debugging
     });
 
+    bmtext.group.position.set(0, 10, 0);
+    //orbitControls.target.copy(bmtext.group.position);
 
-    //
-    /*
-    controls = new THREE.OrbitControls( camera, renderer.domElement );
-    controls.maxPolarAngle = Math.PI * 0.495;
-    controls.target.set( 0, 10, 0 );
-    controls.minDistance = 40.0;
-    controls.maxDistance = 200.0;
-    controls.update();
-    */
+    scene.add(bmtext.group);
+    //hitBoxes.push(bmtext.hitBox);
 
-    //
-
-    window.addEventListener('resize', onWindowResize, false);
+    bmtext.group.add(new THREE.AxisHelper(20));
 }
 
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+
+    vrEffect.setSize(width, height);
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
 
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
 }
+
 
 function animate() {
-    renderer.setAnimationLoop(render);
-}
+    vrEffect.requestAnimationFrame(animate);
 
-function render() {
+    if (vrEffect.isPresenting) {
+        vrControls.update();
+    } else {
+        orbitControls.update();
+    }
+
 
     if (mesh) {
-        mesh.rotation.y += 0.02;
+        //mesh.rotation.y += 0.02;
     }
 
     skyBox.position.copy(camera.position);
-    renderer.render(scene, camera);
+
+    vrEffect.render(scene, camera);
+    //renderer.setAnimationLoop(render);
+}
+
+function render() {
+    
+    //renderer.render(scene, camera);
 }
 
 // Notes:
