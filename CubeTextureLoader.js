@@ -3,7 +3,7 @@
  */
 
 import { ImageLoader } from './ImageLoader.js';
-import { CubeTexture } from '../textures/CubeTexture.js';
+import { CubeTexture } from './textures/CubeTexture.js';
 import { DefaultLoadingManager } from './LoadingManager.js';
 
 
