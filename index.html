@@ -1,42 +1,73 @@
-<meta charset="utf-8" />
+﻿<meta charset="utf-8" />
 <!doctype html>
 <html>
 
-	<script id="vertex-shader" type="x-shader/x-vertex">
-		attribute vec4 vPosition;
-		attribute vec4 vColor;
-		varying vec4 fColor;
+<script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec4 vPosition;
+    attribute vec4 vColor;
+    varying vec4 fColor;
 
-		uniform mat4 proj_matrix;
-		uniform mat4 view_matrix;
+    uniform mat4 proj_matrix;
+    uniform mat4 view_matrix;
 
-		void main()
-		{
-			fColor = vColor;
-			gl_Position = proj_matrix * view_matrix * vPosition;
-		}
-	</script>
+    void main()
+    {
+    fColor = vColor;
+    gl_Position = proj_matrix * view_matrix * vPosition;
+    }
+</script>
 
-	<script id="fragment-shader" type="x-shader/x-fragment">
-		precision mediump float;
-		varying vec4 fColor;
+<script id="fragment-shader" type="x-shader/x-fragment">
+    precision mediump float;
+    varying vec4 fColor;
 
-		void main()
-		{
-			gl_FragColor = fColor;
-		}
-	</script>
+    void main()
+    {
+    gl_FragColor = fColor;
+    }
+</script>
 
-	<head>
-		<title>VR final project</title>
-	</head>
-	<body>
-		<button id="vr-toggle">Toggle VR Display</button>
-		<canvas id="gl-canvas" width="800" height="800"></canvas>
-	</body>
+<head>
+    <title>Bellator militaris VR model</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
 
-	<script type="text/javascript" src="webgl-utils.js"></script>
-	<script type="text/javascript" src="initShaders.js"></script>
-	<script type="text/javascript" src="MV.js"></script>
-	<script type="text/javascript" src="main.js"></script>
+        body {
+            color: #000;
+            font-family: Monospace;
+            font-size: 42px;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            text-align: center;
+            padding: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+    <div id="info">
+        Bellator militaris
+    </div>
+
+    <script src="three.js"></script>
+    <script src="CubeTextureLoader.js"></script>
+    <script src="WebGL.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script src="VRControls.js"></script>
+    <script src="VREffect.js"></script>
+    <script src="WebVR.js"></script>
+    <script src="three-bmfont-text-bundle.js"></script>
+    <script src="sdf-shader.js"></script>
+    <script src="text-bitmap.js"></script>
+    <script src="model.js"></script>
+</body>
+
 </html>

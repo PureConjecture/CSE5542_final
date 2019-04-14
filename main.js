@@ -9,6 +9,7 @@ var perspectiveMatrix = perspective(45, 640.0/480.0, 0.1, 100.0);
 var vertices;
 var vertex_colors;
 var indices;
+var mesh;
 
 function send_to_gpu(array)
 {
@@ -94,6 +95,37 @@ function drawVRScene()
 	//Send the frame to the HMD
 	vrDisplay.submitFrame();
 }
+
+//////////////////////////////// GET MESH
+if (WEBGL.isWebGLAvailable() === false) {
+
+    document.body.appendChild(WEBGL.getWebGLErrorMessage());
+
+}
+
+
+var xhr = new XMLHttpRequest();
+var m;
+xhr.onreadystatechange = function () {
+    if (xhr.readyState == 4) {
+        if (xhr.status == 200 || xhr.status == 0) {
+            var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
+            console.log(rep);
+            m = parseStlBinary(rep);
+            //parseStl(xhr.responseText);
+            mesh.rotation.x = 5;
+            mesh.rotation.z = .25;
+            mesh.position.z = -1500;
+            mesh.position.y = -400;
+            console.log('done parsing');
+        }
+    }
+}
+xhr.onerror = function (e) {
+    console.log(e);
+}
+mesh = m;
+//////////////////////////////////////
 
 //Get a reference to the canvas and max out its size
 var canvas = document.getElementById("gl-canvas");
@@ -187,3 +219,94 @@ navigator.getVRDisplays().then(function(displays) {
 		}
 	}
 );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////// BAD CODE /////////////////////
+
+
+
+// Notes:
+// - STL file format: http://en.wikipedia.org/wiki/STL_(file_format)
+// - 80 byte unused header
+// - All binary STLs are assumed to be little endian, as per wiki doc
+var parseStlBinary = function (stl) {
+    var geo = new THREE.Geometry();
+    var dv = new DataView(stl, 80); // 80 == unused header
+    var isLittleEndian = true;
+    var triangles = dv.getUint32(0, isLittleEndian);
+
+    // console.log('arraybuffer length:  ' + stl.byteLength);
+    // console.log('number of triangles: ' + triangles);
+
+    var offset = 4;
+    for (var i = 0; i < triangles; i++) {
+        // Get the normal for this triangle
+        var normal = new THREE.Vector3(
+            dv.getFloat32(offset, isLittleEndian),
+            dv.getFloat32(offset + 4, isLittleEndian),
+            dv.getFloat32(offset + 8, isLittleEndian)
+        );
+        offset += 12;
+
+        // Get all 3 vertices for this triangle
+        for (var j = 0; j < 3; j++) {
+            geo.vertices.push(
+                new THREE.Vector3(
+                    dv.getFloat32(offset, isLittleEndian),
+                    dv.getFloat32(offset + 4, isLittleEndian),
+                    dv.getFloat32(offset + 8, isLittleEndian)
+                )
+            );
+            offset += 12
+        }
+
+        // there's also a Uint16 "attribute byte count" that we
+        // don't need, it should always be zero.
+        offset += 2;
+
+        // Create a new face for from the vertices and the normal
+        geo.faces.push(new THREE.Face3(i * 3, i * 3 + 1, i * 3 + 2, normal));
+    }
+
+    // The binary STL I'm testing with seems to have all
+    // zeroes for the normals, unlike its ASCII counterpart.
+    // We can use three.js to compute the normals for us, though,
+    // once we've assembled our geometry. This is a relatively
+    // expensive operation, but only needs to be done once.
+    geo.computeFaceNormals();
+
+    var loader = new THREE.TextureLoader();
+    var texture = loader.load("fossil.jpeg")
+    texture.flipY = false;
+
+    mesh = new THREE.Mesh(
+        geo,
+        // new THREE.MeshNormalMaterial({
+        //     overdraw:true
+        // }
+        new THREE.MeshLambertMaterial({
+            map: texture
+            //overdraw: true,
+            //color: 0xaaaaaa,
+            //shading: THREE.FlatShading
+        }
+        ));
+
+    scene.add(mesh);
+
+    stl = null;
+};
+
+   
