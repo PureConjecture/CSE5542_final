@@ -120,14 +120,17 @@ function init() {
     //text
     
     var r = new XMLHttpRequest();
-    r.open('GET', 'bitmap.json');
-    r.overrideMimeType("application/json");
+    
 
     r.onreadystatechange = function () {
         if (r.readyState === 4 && r.status === 200) {
             setup(JSON.parse(r.responseText));
         }
     };
+
+    r.open('GET', 'bitmap.json');
+    r.responseType = 'json';
+    r.overrideMimeType("application/json");
 
     r.send();
 
@@ -144,7 +147,7 @@ function setup(font) {
         font: font,
         lineHeight: font.common.lineHeight - 20,
         letterSpacing: 1,
-        scale: 1.0, //0.0004,
+        scale: 0.004, //0.0004,
         rotate: false,
         color: "#ccc",
         showHitBox: true // for debugging
