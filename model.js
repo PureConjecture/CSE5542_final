@@ -103,7 +103,6 @@ function init() {
                 console.log(rep);
                 parseStlBinary(rep);
                 mesh.position.z = -3;
-                mesh.position.y = 0;
                 orbitControls.target.copy(mesh.position);
                 console.log('done parsing');
             }
@@ -140,25 +139,23 @@ function setup(font) {
     // pass font into TextBitmap object
     bmtext = new TextBitmap({
         imagePath: 'bitmap1.png',
-        text: 'The quick brown fox jumps over the lazy dog.',
+        text: 'Bellator militaris',
         width: 1000,
         align: 'center',
         font: font,
         lineHeight: font.common.lineHeight - 20,
         letterSpacing: 1,
-        scale: 0.004, //0.0004,
+        scale: 0.005,
         rotate: false,
         color: "#ccc",
-        showHitBox: true // for debugging
+        showHitBox: false // for debugging
     });
 
-    bmtext.group.position.set(0, 10, 0);
+    bmtext.group.position.set(0, 2, -4);
     //orbitControls.target.copy(bmtext.group.position);
 
     scene.add(bmtext.group);
     //hitBoxes.push(bmtext.hitBox);
-
-    bmtext.group.add(new THREE.AxisHelper(20));
 }
 
 function onWindowResize() {
