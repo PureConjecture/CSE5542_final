@@ -116,10 +116,11 @@ function init() {
     
     var r = new XMLHttpRequest();
     
-
     r.onreadystatechange = function () {
-        if (r.readyState === 4 && r.status === 200) {
-            addText(JSON.parse(r.responseText));
+        if (r.readyState == 4) {
+            if (r.status == 200 || r.status == 0) {
+                addText(JSON.parse(r.responseText));
+            }         
         }
     };
 
