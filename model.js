@@ -1,17 +1,15 @@
-var mesh, skyBox, bmtext;
-
-if (WEBGL.isWebGLAvailable() === false) {
-
-    document.body.appendChild(WEBGL.getWebGLErrorMessage());
-
-}
-
 var container;
-var camera, scene, renderer, light;
-
+var camera, target, scene, renderer, light;
+var mesh, meshGroup, skyBox, bmtext;
 var vrEffect, vrControls, orbitControls;
+var INTERSECTED, arrow, raycaster;
+var outline, highlight, composer;
 
 function init() {
+
+    if (WEBGL.isWebGLAvailable() === false) {
+        document.body.appendChild(WEBGL.getWebGLErrorMessage());
+    }
 
     container = document.getElementById('container');
 
@@ -23,6 +21,7 @@ function init() {
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
+    target = new THREE.Vector3();
 
     light = new THREE.DirectionalLight(0xffffff, 0.8);
     scene.add(light);
@@ -47,9 +46,9 @@ function init() {
 
         window.addEventListener('vrdisplaypresentchange', function () {
             if (!vrEffect.isPresenting) {
-                camera.position.set(0.13, 0, -0.26);
+                camera.position.set(0, 0, 0);
                 camera.quaternion.set(0, 0, 0, 1);
-                orbitControls.target.copy(mesh.position);
+                orbitControls.target.copy(meshGroup.position);
             }
         }, false);
 
@@ -64,12 +63,7 @@ function init() {
     }
 
 
-    //orbitControls.maxPolarAngle = Math.PI * 0.495;
-    orbitControls.target.set(0, 10, 0);
-    orbitControls.minDistance = 0.0;
-    orbitControls.maxDistance = 100.0;
-    orbitControls.zoomSpeed = 4.0;
-    orbitControls.update();
+    
 
 
     // Skybox
@@ -95,6 +89,8 @@ function init() {
 
     // get fish model
 
+    meshGroup = new THREE.Object3D();
+
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function () {
         if (xhr.readyState == 4) {
@@ -102,8 +98,8 @@ function init() {
                 var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
                 console.log(rep);
                 parseStlBinary(rep);
-                mesh.position.z = -3;
-                orbitControls.target.copy(mesh.position);
+                meshGroup.position.z = -3;
+                orbitControls.target.copy(meshGroup.position);
                 console.log('done parsing');
             }
         }
@@ -132,6 +128,74 @@ function init() {
 
     r.send();
 
+    // image
+
+    var img = new THREE.MeshBasicMaterial({
+        map: new THREE.TextureLoader().load('fish.jpg')
+    })
+
+    var plane = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), img);
+    plane.overdraw = true;
+    plane.position.set(-20, 0, -20);
+    plane.rotation.set(0, 120, 0);
+    scene.add(plane);
+
+    // raycast
+
+    raycaster = new THREE.Raycaster();
+    arrow = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000, 1, 1);
+    scene.add(arrow);
+
+    // hotspots
+
+    composer = new THREE.EffectComposer(renderer);
+
+    var renderPass = new THREE.RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    
+    outline = new THREE.OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+    outline.visibleEdgeColor.set('#ffffff');
+    outline.edgeStrength = 5;
+    outline.edgeGlow = 0;
+    outline.edgeThickness = 1;
+    composer.addPass(outline);
+
+    highlight = new THREE.OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+    highlight.visibleEdgeColor.set('#ff0000');
+    highlight.edgeStrength = 5;
+    highlight.edgeGlow = 1;
+    highlight.edgeThickness = 2;
+    composer.addPass(highlight);
+
+    var sphereGeometry = new THREE.SphereGeometry(.3, 32, 32);
+    var canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    var ctx = canvas.getContext("2d");
+    var gradient = ctx.createLinearGradient(0, 0, 0, 128);
+    gradient.addColorStop(0.35, "black");
+    gradient.addColorStop(0.475, "white");
+    gradient.addColorStop(0.525, "white");
+    gradient.addColorStop(0.65, "black");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+    var alphaTexture = new THREE.Texture(canvas);
+    var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, transparent: true, alphaMap: alphaTexture});
+    var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.name = 'hotspot1';
+    sphere.position.set(.75, -.5, 1);
+    sphere.scale.set(0.5, 0.5, 0.5);
+    outline.selectedObjects = [];
+    outline.selectedObjects.push(sphere);
+    meshGroup.add(sphere);
+
+    //orbitControls.maxPolarAngle = Math.PI * 0.495;
+    orbitControls.target.copy(meshGroup.position);
+    orbitControls.minDistance = 0.0;
+    orbitControls.maxDistance = 100.0;
+    orbitControls.zoomSpeed = 4.0;
+    orbitControls.update();
+
     //window.addEventListener('resize', onWindowResize, false);
 }
 
@@ -145,13 +209,15 @@ function setup(font) {
         font: font,
         lineHeight: font.common.lineHeight - 20,
         letterSpacing: 1,
-        scale: 0.005,
+        scale: 0.01,
         rotate: false,
         color: "#ccc",
         showHitBox: false // for debugging
     });
 
-    bmtext.group.position.set(0, 2, -4);
+    //bmtext.group.position.set(0, 2, -4);
+    bmtext.group.position.set(-20, 6, -20);
+    bmtext.group.rotation.set(0, 120, 0);
     //orbitControls.target.copy(bmtext.group.position);
 
     scene.add(bmtext.group);
@@ -175,18 +241,64 @@ function animate() {
 
     if (vrEffect.isPresenting) {
         vrControls.update();
+
+        // update the position of arrow
+        arrow.setDirection(raycaster.ray.direction);
+        
+        // update the raycaster
+        raycaster.set(camera.getWorldPosition(target), camera.getWorldDirection(target));
+
+        // intersect with all scene meshes.
+        var intersects = raycaster.intersectObjects(scene.children);
+        var intersectedObject = intersects;
+        if (intersects.length > 0) {
+
+            // if the ray intersects with the object 1 text, start rotating the object
+            if (intersects[0].object.name === 'hotspot1') {
+                //intersects[0].object.material.color.set(0xff0000);
+                //intersects[0].object.transparent = false;
+                if (highlight.selectedObjects.length == 0) {
+                    highlight.selectedObjects.push(intersects[0].object);
+                }
+            }
+
+
+            if (INTERSECTED != intersects[0].object) {
+
+                // when intersected, update the color of text
+                
+                
+                //if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
+                INTERSECTED = intersects[0].object;
+                //INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+                //INTERSECTED.material.emissive.setHex(0xff0000);
+                
+            }
+        } else {
+            // update the color when the ray is no longer intersecting
+            highlight.selectedObjects = [];
+            if (INTERSECTED) INTERSECTED.material.color.set(0xffffff);
+            INTERSECTED = null;
+            for (var j = 0; j < intersectedObject.length; j++) {
+                intersectedObject[j].object.material.color.set(0xffffff);
+            }
+        }
+
+
+
     } else {
         orbitControls.update();
     }
 
 
     if (mesh) {
-        //mesh.rotation.y += 0.02;
+        //meshGroup.rotation.y += 0.01;
     }
 
     skyBox.position.copy(camera.position);
-
+    
     vrEffect.render(scene, camera);
+    composer.render();
     //renderer.setAnimationLoop(render);
 }
 
@@ -262,7 +374,8 @@ var parseStlBinary = function (stl) {
         }
         ));
 
-    scene.add(mesh);
+    meshGroup.add(mesh);
+    scene.add(meshGroup);
 
     stl = null;
 };
