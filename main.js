@@ -4,6 +4,7 @@ var mesh, meshGroup, skyBox, nameText, loadText;
 var vrEffect, vrControls, orbitControls;
 var INTERSECTED, arrow, raycaster;
 var outline, highlight, composer;
+var hotspots = [];
 
 function init() {
 
@@ -189,7 +190,7 @@ function init() {
     outline.selectedObjects = [];
     outline.selectedObjects.push(sphere);
     meshGroup.add(sphere);
-
+    hotspots.push(sphere);
     //orbitControls.maxPolarAngle = Math.PI * 0.495;
     orbitControls.target.copy(meshGroup.position);
     orbitControls.minDistance = 0.0;
@@ -265,10 +266,9 @@ function animate() {
         raycaster.set(camera.getWorldPosition(target), camera.getWorldDirection(target));
 
         // intersect with all scene meshes.
-        var intersects = raycaster.intersectObjects(scene.children);
+        var intersects = raycaster.intersectObjects(hotspots);
         var intersectedObject = intersects;
         if (intersects.length > 0) {
-
             // if the ray intersects with the object 1 text, start rotating the object
             if (intersects[0].object.name === 'hotspot1') {
                 //intersects[0].object.material.color.set(0xff0000);
