@@ -1,6 +1,6 @@
 var container;
 var camera, target, scene, renderer, light;
-var mesh, meshGroup, skyBox, bmtext;
+var mesh, meshGroup, skyBox, nameText, loadText;
 var vrEffect, vrControls, orbitControls;
 var INTERSECTED, arrow, raycaster;
 var outline, highlight, composer;
@@ -119,7 +119,7 @@ function init() {
 
     r.onreadystatechange = function () {
         if (r.readyState === 4 && r.status === 200) {
-            setup(JSON.parse(r.responseText));
+            addText(JSON.parse(r.responseText));
         }
     };
 
@@ -199,9 +199,9 @@ function init() {
     //window.addEventListener('resize', onWindowResize, false);
 }
 
-function setup(font) {
+function addText(font) {
     // pass font into TextBitmap object
-    bmtext = new TextBitmap({
+    nameText = new TextBitmap({
         imagePath: 'assets/calibri.png',
         text: 'Bellator militaris',
         width: 1000,
@@ -215,13 +215,28 @@ function setup(font) {
         showHitBox: false // for debugging
     });
 
-    //bmtext.group.position.set(0, 2, -4);
-    bmtext.group.position.set(-20, 6, -20);
-    bmtext.group.rotation.set(0, 120, 0);
-    //orbitControls.target.copy(bmtext.group.position);
+    nameText.group.position.set(-20, 6, -20);
+    nameText.group.rotation.set(0, 120, 0);
 
-    scene.add(bmtext.group);
-    //hitBoxes.push(bmtext.hitBox);
+    scene.add(nameText.group);
+
+    loadText = new TextBitmap({
+        imagePath: 'assets/calibri.png',
+        text: 'Loading model ...',
+        width: 1000,
+        align: 'center',
+        font: font,
+        lineHeight: font.common.lineHeight - 20,
+        letterSpacing: 1,
+        scale: 0.005,
+        rotate: false,
+        color: "#ccc",
+        showHitBox: false // for debugging
+    });
+
+    loadText.group.position.set(0, 0, -4);
+    scene.add(loadText.group);
+
 }
 
 function onWindowResize() {
@@ -373,6 +388,8 @@ var parseStlBinary = function (stl) {
             //shading: THREE.FlatShading
         }
         ));
+
+    scene.remove(loadText.group);
 
     meshGroup.add(mesh);
     scene.add(meshGroup);
