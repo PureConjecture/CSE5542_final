@@ -1,241 +1,311 @@
-//Variables
-var gl;
-var program;
-var vrDisplay;
-var frameData = new VRFrameData();
-var vrSceneFrame;
-var inVR = false;
-var perspectiveMatrix = perspective(45, 640.0/480.0, 0.1, 100.0);
-var vertices;
-var vertex_colors;
-var indices;
-var mesh;
+var container;
+var camera, target, scene, renderer, light;
+var mesh, meshGroup, skyBox, bmtext;
+var vrEffect, vrControls, orbitControls;
+var INTERSECTED, arrow, raycaster;
+var outline, highlight, composer;
 
-function send_to_gpu(array)
-{
-	var buffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-	gl.bufferData(gl.ARRAY_BUFFER, flatten(array), gl.STATIC_DRAW);
-}
+function init() {
 
-function send_and_bind(array, var_name)
-{
-	send_to_gpu(array);
-	var vPosition_location = gl.getAttribLocation(program, var_name);
-	gl.vertexAttribPointer(vPosition_location, 3, gl.FLOAT, false, 0, 0);
-	gl.enableVertexAttribArray(vPosition_location);
-}
+    if (WEBGL.isWebGLAvailable() === false) {
+        document.body.appendChild(WEBGL.getWebGLErrorMessage());
+    }
 
-function toggle_vr_display()
-{
-	console.log("Toggling VR.");
-	if (!inVR) {
-		vrDisplay.requestPresent([{source: canvas}]).then(function() {
-		
-			var leftEye = vrDisplay.getEyeParameters('left');
-			var rightEye = vrDisplay.getEyeParameters('right');
+    container = document.getElementById('container');
 
-			canvas.width = Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2;
-			canvas.height = Math.max(leftEye.renderHeight, rightEye.renderHeight);
+    renderer = new THREE.WebGLRenderer();
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
 
-			//Draw vr scene
-			drawVRScene();
-		});
-	}
+    scene = new THREE.Scene();
 
-	inVR = !inVR;
-}
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
+    target = new THREE.Vector3();
 
-function drawVRScene()
-{
-	//Request the next frame of animation
-	vrSceneFrame = vrDisplay.requestAnimationFrame(drawVRScene);
+    light = new THREE.DirectionalLight(0xffffff, 0.8);
+    scene.add(light);
 
-	//Get frame data
-	vrDisplay.getFrameData(frameData);
+    // VR setup
 
-	var curFramePose = frameData.pose;
-	var curPos = curFramePose.position;
-	var curOrient = curFramePose.orientation;
+    //document.body.appendChild(WEBVR.createButton(renderer));
+    //renderer.vr.enabled = true;
 
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    vrControls = new THREE.VRControls(camera);
+    vrEffect = new THREE.VREffect(renderer);
 
-	//Obtain references to the shader variables for the matricies
-	var viewMatrixLocation = gl.getUniformLocation(program, "view_matrix");
-	var projectionMatrixLocation = gl.getUniformLocation(program, "proj_matrix");
+    orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 
-	//Render the left eye's view
-	gl.viewport(0, 0, canvas.width * 0.5, canvas.height);
+    if (navigator.getVRDisplays !== undefined) {
+        navigator.getVRDisplays()
+            .then(function (displays) {
+                vrEffect.setVRDisplay(displays[0]);
+                vrControls.setVRDisplay(displays[0]);
+                //renderer.setDevice(displays[0]);
+            });
 
-	//Get the left eye's view and projection matrices
-	var leftViewMat = frameData.leftViewMatrix;
-	var leftProjMat = frameData.leftProjectionMatrix;
+        window.addEventListener('vrdisplaypresentchange', function () {
+            if (!vrEffect.isPresenting) {
+                camera.position.set(0, 0, 0);
+                camera.quaternion.set(0, 0, 0, 1);
+                orbitControls.target.copy(meshGroup.position);
+            }
+        }, false);
 
-	//Send these matrices to the GPU
-	gl.uniformMatrix4fv(viewMatrixLocation, false, leftViewMat);
-	gl.uniformMatrix4fv(projectionMatrixLocation, false, leftProjMat);
+        window.addEventListener('vrdisplayactivate', function () {
+            vrControls.resetPose();
+        }, false);
 
-	//Draw the geometry	
-	gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0);
+        document.body.appendChild(WEBVR.getButton(vrEffect));
 
-	//Render the right eye's view
-	gl.viewport(canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height);
-
-	//Get the right eye's view and projection matrices
-	var rightViewMat = frameData.rightViewMatrix;
-	var rightProjMat = frameData.rightProjectionMatrix;
-
-	//Send these to the GPU
-	gl.uniformMatrix4fv(viewMatrixLocation, false, rightViewMat);
-	gl.uniformMatrix4fv(projectionMatrixLocation, false, rightProjMat);
-
-	//Draw the geometry
-	gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0);
-
-	//Send the frame to the HMD
-	vrDisplay.submitFrame();
-}
-
-//////////////////////////////// GET MESH
-if (WEBGL.isWebGLAvailable() === false) {
-
-    document.body.appendChild(WEBGL.getWebGLErrorMessage());
-
-}
+    } else {
+        document.body.appendChild(WEBVR.getMessage());
+    }
 
 
-var xhr = new XMLHttpRequest();
-var m;
-xhr.onreadystatechange = function () {
-    if (xhr.readyState == 4) {
-        if (xhr.status == 200 || xhr.status == 0) {
-            var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
-            console.log(rep);
-            m = parseStlBinary(rep);
-            //parseStl(xhr.responseText);
-            mesh.rotation.x = 5;
-            mesh.rotation.z = .25;
-            mesh.position.z = -1500;
-            mesh.position.y = -400;
-            console.log('done parsing');
+    
+
+
+    // Skybox
+
+    var loader = new THREE.CubeTextureLoader();
+    loader.setPath('./assets/uw_sky/underwater/');
+    var textureCube = loader.load(['uw_bk.jpg', 'uw_ft.jpg', 'uw_dn.jpg', 'uw_up.jpg', 'uw_rt.jpg', 'uw_lf.jpg']);
+
+    var skyMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        envMap: textureCube,
+        side: THREE.BackSide
+    });
+
+    var skyGeometry = new THREE.BoxGeometry(1024, 1024, 1024);
+
+    var skyMesh = new THREE.Mesh(skyGeometry, skyMaterial);
+
+    skyBox = new THREE.Object3D();
+    skyBox.add(skyMesh);
+
+    scene.add(skyBox);
+
+    // get fish model
+
+    meshGroup = new THREE.Object3D();
+
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4) {
+            if (xhr.status == 200 || xhr.status == 0) {
+                var rep = xhr.response; // || xhr.mozResponseArrayBuffer;
+                console.log(rep);
+                parseStlBinary(rep);
+                meshGroup.position.z = -3;
+                orbitControls.target.copy(meshGroup.position);
+                console.log('done parsing');
+            }
         }
     }
+    xhr.onerror = function (e) {
+        console.log(e);
+    }
+
+    xhr.open("GET", 'assets/bellator.stl', true);
+    xhr.responseType = "arraybuffer";
+    xhr.send(null)
+
+    //text
+    
+    var r = new XMLHttpRequest();
+    
+
+    r.onreadystatechange = function () {
+        if (r.readyState === 4 && r.status === 200) {
+            setup(JSON.parse(r.responseText));
+        }
+    };
+
+    r.open('GET', 'assets/calibri.json');
+    r.overrideMimeType("application/json");
+
+    r.send();
+
+    // image
+
+    var img = new THREE.MeshBasicMaterial({
+        map: new THREE.TextureLoader().load('assets/fish.jpg')
+    })
+
+    var plane = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), img);
+    plane.overdraw = true;
+    plane.position.set(-20, 0, -20);
+    plane.rotation.set(0, 120, 0);
+    scene.add(plane);
+
+    // raycast
+
+    raycaster = new THREE.Raycaster();
+    arrow = new THREE.ArrowHelper(raycaster.ray.direction, raycaster.ray.origin, 100, 0xff0000, 1, 1);
+    scene.add(arrow);
+
+    // hotspots
+
+    composer = new THREE.EffectComposer(renderer);
+
+    var renderPass = new THREE.RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    
+    outline = new THREE.OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+    outline.visibleEdgeColor.set('#ffffff');
+    outline.edgeStrength = 5;
+    outline.edgeGlow = 0;
+    outline.edgeThickness = 1;
+    composer.addPass(outline);
+
+    highlight = new THREE.OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
+    highlight.visibleEdgeColor.set('#ff0000');
+    highlight.edgeStrength = 5;
+    highlight.edgeGlow = 1;
+    highlight.edgeThickness = 2;
+    composer.addPass(highlight);
+
+    var sphereGeometry = new THREE.SphereGeometry(.3, 32, 32);
+    var canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    var ctx = canvas.getContext("2d");
+    var gradient = ctx.createLinearGradient(0, 0, 0, 128);
+    gradient.addColorStop(0.35, "black");
+    gradient.addColorStop(0.475, "white");
+    gradient.addColorStop(0.525, "white");
+    gradient.addColorStop(0.65, "black");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+    var alphaTexture = new THREE.Texture(canvas);
+    var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, transparent: true, alphaMap: alphaTexture});
+    var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.name = 'hotspot1';
+    sphere.position.set(.75, -.5, 1);
+    sphere.scale.set(0.5, 0.5, 0.5);
+    outline.selectedObjects = [];
+    outline.selectedObjects.push(sphere);
+    meshGroup.add(sphere);
+
+    //orbitControls.maxPolarAngle = Math.PI * 0.495;
+    orbitControls.target.copy(meshGroup.position);
+    orbitControls.minDistance = 0.0;
+    orbitControls.maxDistance = 100.0;
+    orbitControls.zoomSpeed = 4.0;
+    orbitControls.update();
+
+    //window.addEventListener('resize', onWindowResize, false);
 }
-xhr.onerror = function (e) {
-    console.log(e);
-}
-mesh = m;
-//////////////////////////////////////
 
-//Get a reference to the canvas and max out its size
-var canvas = document.getElementById("gl-canvas");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function setup(font) {
+    // pass font into TextBitmap object
+    bmtext = new TextBitmap({
+        imagePath: 'assets/calibri.png',
+        text: 'Bellator militaris',
+        width: 1000,
+        align: 'center',
+        font: font,
+        lineHeight: font.common.lineHeight - 20,
+        letterSpacing: 1,
+        scale: 0.01,
+        rotate: false,
+        color: "#ccc",
+        showHitBox: false // for debugging
+    });
 
-//Create and initialize the WebGL context
-gl = WebGLUtils.setupWebGL(canvas);
-if (!gl) {
-	alert("WebGL is not supported by your system.");
-}
-gl.clearColor(0.0, 0.0, 0.0, 1.0);
-gl.clearDepth(1.0);
-gl.enable(gl.DEPTH_TEST);
-gl.depthFunc(gl.LEQUAL);
-gl.clear(gl.COLOR_BUFFER_BIT);
+    //bmtext.group.position.set(0, 2, -4);
+    bmtext.group.position.set(-20, 6, -20);
+    bmtext.group.rotation.set(0, 120, 0);
+    //orbitControls.target.copy(bmtext.group.position);
 
-//Compile the shaders
-program = initShaders(gl, "vertex-shader", "fragment-shader");
-gl.useProgram(program);
-
-//Array of cube vertices
-vertices = [
-	vec3(-0.5, -0.5, 0.5),
-	vec3(-0.5, 0.5, 0.5),
-	vec3(0.5, 0.5, 0.5),
-	vec3(0.5, -0.5, 0.5),
-	vec3(-0.5, -0.5, -0.5),
-	vec3(-0.5, 0.5, -0.5),
-	vec3(0.5, 0.5, -0.5),
-	vec3(0.5, -0.5, -0.5)
-];
-
-vertex_colors = [
-	vec4(0.0, 0.0, 0.0, 1.0),
-	vec4(1.0, 0.0, 0.0, 1.0),
-	vec4(1.0, 1.0, 0.0, 1.0),
-	vec4(0.0, 1.0, 0.0, 1.0),
-	vec4(0.0, 0.0, 1.0, 1.0),
-	vec4(1.0, 0.0, 1.0, 1.0),
-	vec4(1.0, 1.0, 1.0, 1.0),
-	vec4(0.0, 1.0, 1.0, 1.0)
-];
-
-if (vertices.length != vertex_colors.length)
-{
-	alert("vertices and vertex_colors are of differing lengths.");
+    scene.add(bmtext.group);
+    //hitBoxes.push(bmtext.hitBox);
 }
 
-//Define the indices of each triangle
-indices = [
-	1, 0, 3,
-	3, 2, 1,
-	2, 3, 7,
-	7, 6, 2,
-	3, 0, 4,
-	4, 7, 3,
-	6, 5, 1,
-	1, 2, 6,
-	4, 5, 6,
-	6, 7, 4,
-	5, 4, 0,
-	0, 1, 5
-];
+function onWindowResize() {
+    var width = window.innerWidth;
+    var height = window.innerHeight;
 
-//Send verticies
-send_and_bind(vertices, "vPosition");
+    vrEffect.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
 
-//Send vertex colors
-send_and_bind(vertex_colors, "vColor");
-
-//Send index data to GPU
-var iBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuffer);
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(indices), gl.STATIC_DRAW);
-
-if (!navigator.getVRDisplays) {
-	alert("Your browser does not support WebVR.");
+    renderer.setSize(width, height);
 }
 
-//Get the displays attached to the computer
-var button = document.getElementById("vr-toggle");
-navigator.getVRDisplays().then(function(displays) {
-		if (displays.length > 0) {
-			vrDisplay = displays[0];
-			console.log("Display found.");
 
-			button.onclick = toggle_vr_display;
-		} else {
-			alert("VR display not found.");
-		}
-	}
-);
+function animate() {
+    vrEffect.requestAnimationFrame(animate);
 
+    if (vrEffect.isPresenting) {
+        vrControls.update();
 
+        // update the position of arrow
+        arrow.setDirection(raycaster.ray.direction);
+        
+        // update the raycaster
+        raycaster.set(camera.getWorldPosition(target), camera.getWorldDirection(target));
 
+        // intersect with all scene meshes.
+        var intersects = raycaster.intersectObjects(scene.children);
+        var intersectedObject = intersects;
+        if (intersects.length > 0) {
 
-
-
-
-
-
-
-
-
-
-
-///////////// BAD CODE /////////////////////
+            // if the ray intersects with the object 1 text, start rotating the object
+            if (intersects[0].object.name === 'hotspot1') {
+                //intersects[0].object.material.color.set(0xff0000);
+                //intersects[0].object.transparent = false;
+                if (highlight.selectedObjects.length == 0) {
+                    highlight.selectedObjects.push(intersects[0].object);
+                }
+            }
 
 
+            if (INTERSECTED != intersects[0].object) {
+
+                // when intersected, update the color of text
+                
+                
+                //if (INTERSECTED) INTERSECTED.material.emissive.setHex(INTERSECTED.currentHex);
+                INTERSECTED = intersects[0].object;
+                //INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+                //INTERSECTED.material.emissive.setHex(0xff0000);
+                
+            }
+        } else {
+            // update the color when the ray is no longer intersecting
+            highlight.selectedObjects = [];
+            if (INTERSECTED) INTERSECTED.material.color.set(0xffffff);
+            INTERSECTED = null;
+            for (var j = 0; j < intersectedObject.length; j++) {
+                intersectedObject[j].object.material.color.set(0xffffff);
+            }
+        }
+
+
+
+    } else {
+        orbitControls.update();
+    }
+
+
+    if (mesh) {
+        //meshGroup.rotation.y += 0.01;
+    }
+
+    skyBox.position.copy(camera.position);
+    
+    vrEffect.render(scene, camera);
+    composer.render();
+    //renderer.setAnimationLoop(render);
+}
+
+function render() {
+    
+    //renderer.render(scene, camera);
+}
 
 // Notes:
 // - STL file format: http://en.wikipedia.org/wiki/STL_(file_format)
@@ -288,7 +358,7 @@ var parseStlBinary = function (stl) {
     geo.computeFaceNormals();
 
     var loader = new THREE.TextureLoader();
-    var texture = loader.load("fossil.jpeg")
+    var texture = loader.load("assets/fossil.jpeg")
     texture.flipY = false;
 
     mesh = new THREE.Mesh(
@@ -304,9 +374,11 @@ var parseStlBinary = function (stl) {
         }
         ));
 
-    scene.add(mesh);
+    meshGroup.add(mesh);
+    scene.add(meshGroup);
 
     stl = null;
 };
 
-   
+init();
+animate();
