@@ -2,7 +2,7 @@ var container;
 var camera, target, scene, renderer, light;
 var mesh, meshGroup, skyBox, nameText, loadText;
 var vrEffect, vrControls, orbitControls;
-var INTERSECTED, arrow, raycaster, camPoint;
+var INTERSECTED, arrow, raycaster;
 var outline, highlight, composer;
 var hotspots = [], labels = [], labelGroup;
 
@@ -20,7 +20,6 @@ function init() {
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
-    camPoint = new THREE.Vector3(0, 0, 0.5);
 
     light = new THREE.DirectionalLight(0xffffff, 0.8);
     scene.add(light);
@@ -322,6 +321,7 @@ function animate() {
         vrControls.update();
 
         // update the raycaster
+        var camPoint = new THREE.Vector3(0, 0, 0.5);
         camPoint.unproject(camera);
         raycaster.set(camera.position, camPoint.sub(camera.position).normalize());
 
